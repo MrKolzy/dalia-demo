@@ -197,6 +197,12 @@ body.speaking .bubble .wave i:nth-child(4){animation-delay:.45s}
 .mic-perm{display:inline-flex;align-items:center;gap:6px;align-self:flex-start}
 .mic-perm[hidden]{display:none}
 .mic-perm svg{width:16px;height:16px}
+.mic-help{border:none;border-radius:20px;padding:22px;max-width:min(460px, calc(100vw - 32px));background:var(--surface);color:var(--ink);box-shadow:var(--shadow-lg)}
+.mic-help::backdrop{background:rgba(20,10,51,.55)}
+.mic-help h2{font-family:var(--display);font-size:1.3rem;margin:0 0 8px}
+.mic-help p{margin:0 0 10px;color:var(--ink-2)}
+.mic-help ol{margin:0 0 16px;padding-left:20px;display:grid;gap:8px;line-height:1.4}
+.mic-help .btn{width:100%;padding:12px 14px;font-size:1rem}
 
 /* full-screen alarm on Carmen's tablet */
 .alarm{position:absolute;inset:0;z-index:5;display:flex;align-items:flex-start;justify-content:center;padding:clamp(32px,7vh,72px) 28px 28px;color:#fff;overflow:hidden;

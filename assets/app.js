@@ -22,6 +22,17 @@ en:{
   micAllow:"The browser has blocked the microphone for this page. Tap the icon next to the address (lock or ⓘ) → Permissions → Microphone → Allow, then reload the page.",
   micAllowIOS:"Safari has blocked the microphone for this page. Tap aA in the address bar → Website Settings → Microphone → Allow, then reload the page.",
   micEnable:"Turn on microphone", micReady:"Microphone ready. Tap Speak and talk.",
+  micHelpTitle:"Before you talk", micHelpIntro:"For Dalia to hear you, the microphone must be allowed in two places. If either one is blocked, voice will not work.",
+  micBlockedTitle:"The microphone is blocked", micBlockedIntro:"Check these two places, then reload the page.",
+  micHelpOk:"OK, let's talk", micHelpClose:"OK",
+  micStepPage:{
+    ios:"On this page: when Safari asks, tap Allow. If it doesn't ask: aA in the address bar → Website Settings → Microphone → Allow.",
+    android:"On this page: when the browser asks, tap Allow. If it doesn't ask: icon next to the address (lock or ⓘ) → Permissions → Microphone → Allow.",
+    desktop:"On this page: when the browser asks, click Allow. If it doesn't ask: icon next to the address (lock or ⓘ) → Microphone → Allow."},
+  micStepApp:{
+    ios:"In the iPhone settings: Settings → your browser (Safari, Chrome, Brave…) → Microphone → on.",
+    android:"In the phone settings: Settings → Apps → your browser (Chrome, Brave, Firefox…) → Permissions → Microphone → Allow.",
+    desktop:"In the computer settings: Windows → Settings → Privacy & security → Microphone (on for apps); Mac → System Settings → Privacy & Security → Microphone → your browser on."},
   micFrame:"This viewer blocks the microphone. Open the prototype on its own page to talk:",
   micNoDevice:"No microphone found. Connect one and tap Speak again, or type.",
   micWriting:"Writing down what you said…", micModel:"First time only: downloading the voice model… {n}%",
@@ -132,6 +143,17 @@ es:{
   micAllow:"El navegador ha bloqueado el micrófono en esta página. Toca el icono junto a la dirección (candado o ⓘ) → Permisos → Micrófono → Permitir, y recarga la página.",
   micAllowIOS:"Safari ha bloqueado el micrófono en esta página. Toca aA en la barra de direcciones → Ajustes del sitio web → Micrófono → Permitir, y recarga la página.",
   micEnable:"Activar micrófono", micReady:"Micrófono listo. Pulsa Hablar y habla.",
+  micHelpTitle:"Antes de hablar", micHelpIntro:"Para que Dalia te oiga, el micrófono tiene que estar permitido en dos sitios. Si alguno está bloqueado, la voz no funcionará.",
+  micBlockedTitle:"El micrófono está bloqueado", micBlockedIntro:"Revisa estos dos sitios y recarga la página.",
+  micHelpOk:"Entendido, a hablar", micHelpClose:"Entendido",
+  micStepPage:{
+    ios:"En esta página: cuando Safari pregunte, pulsa Permitir. Si no pregunta: aA en la barra de direcciones → Ajustes del sitio web → Micrófono → Permitir.",
+    android:"En esta página: cuando el navegador pregunte, pulsa Permitir. Si no pregunta: icono junto a la dirección (candado o ⓘ) → Permisos → Micrófono → Permitir.",
+    desktop:"En esta página: cuando el navegador pregunte, pulsa Permitir. Si no pregunta: icono junto a la dirección (candado o ⓘ) → Micrófono → Permitir."},
+  micStepApp:{
+    ios:"En los ajustes del iPhone: Ajustes → tu navegador (Safari, Chrome, Brave…) → Micrófono → activado.",
+    android:"En los ajustes del móvil: Ajustes → Aplicaciones → tu navegador (Chrome, Brave, Firefox…) → Permisos → Micrófono → Permitir.",
+    desktop:"En los ajustes del ordenador: Windows → Configuración → Privacidad y seguridad → Micrófono (activado para las apps); Mac → Ajustes del Sistema → Privacidad y seguridad → Micrófono → tu navegador activado."},
   micFrame:"Este visor bloquea el micrófono. Abre el prototipo en su propia página para hablar:",
   micNoDevice:"No se encuentra ningún micrófono. Conecta uno y pulsa Hablar otra vez, o escribe.",
   micWriting:"Escribiendo lo que has dicho…", micModel:"Solo la primera vez: descargando el modelo de voz… {n}%",
@@ -394,6 +416,32 @@ const micSay = (k, v) => {
 const micLive = on => $("#micBtn").classList.toggle("live", on);
 
 const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const PLATFORM = IS_IOS ? "ios" : /Android/i.test(navigator.userAgent) ? "android" : "desktop";
+
+// Pop-up that explains where the microphone must be allowed: the first time someone taps Speak
+// (unless it is already allowed) and whenever the microphone turns out to be blocked.
+const MIC_HELP_KEY = "dalia.micHelpSeen";
+let micHelpSeen = false, micHelpThen = null;
+try { micHelpSeen = localStorage.getItem(MIC_HELP_KEY) === "1"; } catch(e){}
+function micHelp(blocked, then){
+  const d = $("#micHelp");
+  $("#micHelpTitle").textContent = t(blocked ? "micBlockedTitle" : "micHelpTitle");
+  $("#micHelpIntro").textContent = t(blocked ? "micBlockedIntro" : "micHelpIntro");
+  $("#micHelpPage").textContent = t("micStepPage." + PLATFORM);
+  $("#micHelpApp").textContent = t("micStepApp." + PLATFORM);
+  $("#micHelpOk").textContent = t(blocked ? "micHelpClose" : "micHelpOk");
+  micHelpThen = then || null;
+  micHelpSeen = true; try { localStorage.setItem(MIC_HELP_KEY, "1"); } catch(e){}
+  if (d.open) return;
+  if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+}
+function micHelpDone(){
+  const d = $("#micHelp"), then = micHelpThen;
+  micHelpThen = null;
+  if (d.close) d.close(); else d.removeAttribute("open");
+  then?.();
+}
+const BLOCKED = ["micAllow", "micAllowIOS", "micError"];
 
 // Asks for the microphone (the browser shows its permission prompt). Throws the key of the message to show.
 async function getMic(){
@@ -416,13 +464,14 @@ async function watchMicPerm(){
 const showMicPerm = () => { $("#micPerm").hidden = micPerm?.state === "granted"; };
 async function enableMic(){
   try { (await getMic()).getTracks().forEach(x => x.stop()); micSay("micReady"); }
-  catch(key){ micSay(typeof key === "string" ? key : "micError"); }
+  catch(key){ key = typeof key === "string" ? key : "micError"; micSay(key); if (BLOCKED.includes(key)) micHelp(true); }
   if (!micPerm) $("#micPerm").hidden = $("#micNote").textContent === t("micReady");
   else showMicPerm();
 }
 
 function listen(){
   if (rec) return rec.finish();        // second tap: stop now and answer what was heard
+  if (!micHelpSeen && micPerm?.state !== "granted") return micHelp(false, listen);
   return useSR ? listenSR() : listenRec();
 }
 
@@ -460,7 +509,11 @@ async function listenRec(again){
   rec = busy;
   let stream;
   try { stream = await getMic(); }
-  catch(key){ rec = null; return micSay(typeof key === "string" ? key : "micError"); }
+  catch(key){
+    rec = null; key = typeof key === "string" ? key : "micError";
+    micSay(key); if (BLOCKED.includes(key)) micHelp(true);
+    return;
+  }
   if (!window.MediaRecorder){ stream.getTracks().forEach(x => x.stop()); rec = null; return micSay("micError"); }
 
   const mr = new MediaRecorder(stream), chunks = [];
@@ -1131,6 +1184,7 @@ document.addEventListener("click", e => {
   if (b.id === "premiumBtn" || b.dataset.premium){ S.premium = !S.premium; if (!S.premium){ S.lauraWho = "carmen"; S.pilarWho = "carmen"; } renderStatic(); return render(); }
   if (b.id === "micBtn") return listen();
   if (b.id === "micPerm") return enableMic();
+  if (b.id === "micHelpOk") return micHelpDone();
   if (b.dataset.lang){ S.lang = b.dataset.lang; renderStatic(); return render(); }
   if (b.dataset.sc) return scenario(+b.dataset.sc);
   if (b.dataset.tab){ S.tab = b.dataset.tab; return renderTablet(); }
