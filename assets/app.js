@@ -20,7 +20,7 @@ en:{
   micError:"Something went wrong with the microphone. Tap Speak to try again, or type.",
   micSilent:"I didn't hear anything. Tap Speak and try again, or type.",
   micAllow:"Allow the microphone for this page (lock icon next to the address), then tap Speak again.",
-  micFrame:"This viewer blocks the microphone. Allow it in the browser settings, or open the prototype in its own tab.",
+  micFrame:"This viewer blocks the microphone. Open the prototype on its own page to talk:",
   micNoDevice:"No microphone found. Connect one and tap Speak again, or type.",
   micWriting:"Writing down what you said…", micModel:"First time only: downloading the voice model… {n}%",
   hintsC:["Did I take my pills this morning?","What do I have today?","I've taken them","Remind me to water the plants at 6","Remind me about the doctor at 5","Can I take two pills if I forgot one?"],
@@ -128,7 +128,7 @@ es:{
   micError:"Algo ha fallado con el micrófono. Pulsa Hablar para reintentarlo, o escribe.",
   micSilent:"No he oído nada. Pulsa Hablar y vuelve a intentarlo, o escribe.",
   micAllow:"Permite el micrófono para esta página (candado junto a la dirección) y pulsa Hablar otra vez.",
-  micFrame:"Este visor bloquea el micrófono. Permítelo en los ajustes del navegador o abre el prototipo en su propia pestaña.",
+  micFrame:"Este visor bloquea el micrófono. Abre el prototipo en su propia página para hablar:",
   micNoDevice:"No se encuentra ningún micrófono. Conecta uno y pulsa Hablar otra vez, o escribe.",
   micWriting:"Escribiendo lo que has dicho…", micModel:"Solo la primera vez: descargando el modelo de voz… {n}%",
   hintsC:["¿Me he tomado las pastillas esta mañana?","¿Qué tengo hoy?","Ya me las he tomado","Recuérdame regar las plantas a las 6","Recuérdame el médico a las 5","¿Puedo tomar dos pastillas si olvidé una?"],
@@ -377,7 +377,16 @@ let useSR = !!SR && !navigator.brave && !/[?&]whisper(&|$)/.test(location.search
 const MIC_WAIT = 8000;                 // ms without any speech before we stop listening instead of hanging
 const MIC_MAX = 15000;                 // longest recording in the Whisper path
 let rec = null;                        // the current listening session; a second tap calls rec.finish()
-const micSay = (k, v) => { $("#micNote").textContent = t(k, v); };
+const DEMO_URL = "https://mrkolzy.github.io/dalia-demo/";   // public copy with the microphone allowed (claude.ai blocks it)
+const micSay = (k, v) => {
+  const note = $("#micNote");
+  note.textContent = t(k, v);
+  if (k === "micFrame"){
+    const a = document.createElement("a");
+    a.href = DEMO_URL; a.target = "_blank"; a.rel = "noopener"; a.textContent = " " + DEMO_URL.replace(/^https:\/\/|\/$/g, "");
+    note.append(a);
+  }
+};
 const micLive = on => $("#micBtn").classList.toggle("live", on);
 
 // Asks for the microphone (the browser shows its permission prompt). Throws the key of the message to show.
