@@ -19,7 +19,9 @@ en:{
   micListening:"Listening…", micAgain:"Listening… please say it again.",
   micError:"Something went wrong with the microphone. Tap Speak to try again, or type.",
   micSilent:"I didn't hear anything. Tap Speak and try again, or type.",
-  micAllow:"Allow the microphone for this page (lock icon next to the address), then tap Speak again.",
+  micAllow:"The browser has blocked the microphone for this page. Tap the icon next to the address (lock or ⓘ) → Permissions → Microphone → Allow, then reload the page.",
+  micAllowIOS:"Safari has blocked the microphone for this page. Tap aA in the address bar → Website Settings → Microphone → Allow, then reload the page.",
+  micEnable:"Turn on microphone", micReady:"Microphone ready. Tap Speak and talk.",
   micFrame:"This viewer blocks the microphone. Open the prototype on its own page to talk:",
   micNoDevice:"No microphone found. Connect one and tap Speak again, or type.",
   micWriting:"Writing down what you said…", micModel:"First time only: downloading the voice model… {n}%",
@@ -127,7 +129,9 @@ es:{
   micListening:"Escuchando…", micAgain:"Escuchando… dilo otra vez, por favor.",
   micError:"Algo ha fallado con el micrófono. Pulsa Hablar para reintentarlo, o escribe.",
   micSilent:"No he oído nada. Pulsa Hablar y vuelve a intentarlo, o escribe.",
-  micAllow:"Permite el micrófono para esta página (candado junto a la dirección) y pulsa Hablar otra vez.",
+  micAllow:"El navegador ha bloqueado el micrófono en esta página. Toca el icono junto a la dirección (candado o ⓘ) → Permisos → Micrófono → Permitir, y recarga la página.",
+  micAllowIOS:"Safari ha bloqueado el micrófono en esta página. Toca aA en la barra de direcciones → Ajustes del sitio web → Micrófono → Permitir, y recarga la página.",
+  micEnable:"Activar micrófono", micReady:"Micrófono listo. Pulsa Hablar y habla.",
   micFrame:"Este visor bloquea el micrófono. Abre el prototipo en su propia página para hablar:",
   micNoDevice:"No se encuentra ningún micrófono. Conecta uno y pulsa Hablar otra vez, o escribe.",
   micWriting:"Escribiendo lo que has dicho…", micModel:"Solo la primera vez: descargando el modelo de voz… {n}%",
@@ -389,15 +393,32 @@ const micSay = (k, v) => {
 };
 const micLive = on => $("#micBtn").classList.toggle("live", on);
 
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
 // Asks for the microphone (the browser shows its permission prompt). Throws the key of the message to show.
 async function getMic(){
   if (!navigator.mediaDevices?.getUserMedia) throw "micError";
   try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
   catch(e){
     if (e?.name === "NotFoundError" || e?.name === "OverconstrainedError") throw "micNoDevice";
-    if (e?.name === "NotAllowedError" || e?.name === "SecurityError") throw window.top !== window ? "micFrame" : "micAllow";
+    if (e?.name === "NotAllowedError" || e?.name === "SecurityError") throw window.top !== window ? "micFrame" : IS_IOS ? "micAllowIOS" : "micAllow";
     throw "micError";
   }
+}
+
+// "Turn on microphone" button: shown until the browser says the microphone is allowed.
+// Browsers only show their prompt while nothing has been decided; once blocked, micAllow explains where to unblock it.
+let micPerm = null;
+async function watchMicPerm(){
+  try { micPerm = await navigator.permissions.query({ name: "microphone" }); micPerm.onchange = showMicPerm; } catch(e){}
+  showMicPerm();
+}
+const showMicPerm = () => { $("#micPerm").hidden = micPerm?.state === "granted"; };
+async function enableMic(){
+  try { (await getMic()).getTracks().forEach(x => x.stop()); micSay("micReady"); }
+  catch(key){ micSay(typeof key === "string" ? key : "micError"); }
+  if (!micPerm) $("#micPerm").hidden = $("#micNote").textContent === t("micReady");
+  else showMicPerm();
 }
 
 function listen(){
@@ -1109,6 +1130,7 @@ document.addEventListener("click", e => {
   if (b.id === "voiceBtn"){ S.voice = !S.voice; if (!S.voice) try { speechSynthesis.cancel(); } catch(e){} return renderStatic(); }
   if (b.id === "premiumBtn" || b.dataset.premium){ S.premium = !S.premium; if (!S.premium){ S.lauraWho = "carmen"; S.pilarWho = "carmen"; } renderStatic(); return render(); }
   if (b.id === "micBtn") return listen();
+  if (b.id === "micPerm") return enableMic();
   if (b.dataset.lang){ S.lang = b.dataset.lang; renderStatic(); return render(); }
   if (b.dataset.sc) return scenario(+b.dataset.sc);
   if (b.dataset.tab){ S.tab = b.dataset.tab; return renderTablet(); }
@@ -1152,6 +1174,7 @@ try { loadVoices(); speechSynthesis.addEventListener("voiceschanged", () => { lo
 AI.onMode(() => render());
 renderStatic(); render();
 AI.init();
+watchMicPerm();
 // Deep links for demos and screenshots: #sc1 … #sc5, optionally with a language (#sc3-es).
 const deep = location.hash.match(/^#sc([1-5])(?:-(en|es))?$/);
 if (deep){ if (deep[2]){ S.lang = deep[2]; renderStatic(); } scenario(+deep[1]); }

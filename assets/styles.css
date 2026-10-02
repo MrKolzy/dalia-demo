@@ -194,6 +194,9 @@ body.speaking .bubble .wave i:nth-child(4){animation-delay:.45s}
 .hints{display:flex;gap:6px;flex-wrap:wrap}
 .hints .chip{background:var(--surface);font-size:.95rem}
 .note{font-size:.85rem;color:var(--ink-2)}
+.mic-perm{display:inline-flex;align-items:center;gap:6px;align-self:flex-start}
+.mic-perm[hidden]{display:none}
+.mic-perm svg{width:16px;height:16px}
 
 /* full-screen alarm on Carmen's tablet */
 .alarm{position:absolute;inset:0;z-index:5;display:flex;align-items:flex-start;justify-content:center;padding:clamp(32px,7vh,72px) 28px 28px;color:#fff;overflow:hidden;
